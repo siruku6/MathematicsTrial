@@ -1,0 +1,34 @@
+version: '3.7'
+services:
+  python:
+    build:
+      context: ../../
+      dockerfile: ./docker/dev/Dockerfile
+      args:
+        WORKING_DIRECTORY: ${WORKING_DIRECTORY}
+    environment:
+      - TZ=Asia/Tokyo
+      - PYTHONPATH=/${WORKING_DIRECTORY}:/${WORKING_DIRECTORY}/src
+      - JUPYTER_PORT=${JUPYTER_PORT}
+
+    # Fix slow shutdown of web container
+    init: true
+    volumes:
+      # bind mount
+      - ../../:/${WORKING_DIRECTORY}
+    ports:
+      - ${JUPYTER_PORT}:${JUPYTER_PORT}
+      - ${TENSORBOARD_PORT}:${TENSORBOARD_PORT}
+
+    # INFO: Following two lines are necessary for the backtrace by pdb
+    stdin_open: true
+    tty: true
+
+    # command: sh /${WORKING_DIRECTORY}/environments/action_classification/run_servers.sh
+    command: >
+      bash -c "
+        tensorboard --logdir data/ --host=0.0.0.0 --port ${TENSORBOARD_PORT} & \
+        jupyter notebook --no-browser --ip=0.0.0.0 --port ${JUPYTER_PORT} --allow-root --NotebookApp.token='demo'
+      "
+    working_dir: "/${WORKING_DIRECTORY}"
+    shm_size: "16gb"
