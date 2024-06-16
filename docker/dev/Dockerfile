@@ -1,13 +1,13 @@
 # Docker image
-FROM python:3.10.12-slim
+FROM python:3.11-slim
 
 RUN apt -y update && apt -y upgrade
 RUN export DEBIAN_FRONTEND=noninteractive \
     && apt -y install --no-install-recommends \
     # Necessary for pip install
     gcc g++ libc-dev \
-    # For development and debug
-    bash curl git net-tools vim \
+    # For development and debug (procps: `free -h`)
+    bash curl git net-tools vim procps \
     # For scikit-learn (scipy)
     gfortran libopenblas-dev liblapack-dev \
     # For opencv-python
