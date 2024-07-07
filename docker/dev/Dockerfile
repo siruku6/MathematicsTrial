@@ -12,6 +12,8 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     gfortran libopenblas-dev liblapack-dev \
     # For opencv-python
     libopencv-dev \
+    # For parapara-anime
+    xvfb \
     # # For building pafprocess module
     # swig \
     && apt clean \
