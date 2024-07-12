@@ -91,21 +91,45 @@ class GA:
         # 各ジョブの発生回数がマシンの台数と同じになるまで修復を続ける。
         while stop:
             for i in range(self.population_size):
+                # 計算每個job的出現次數 (各ジョブの発生回数を計算する)
                 unique_elements, counts = np.unique(
                     offspring_list[i], return_counts=True
-                )  # 計算每個job的出現次數
-                if sum(counts != self.num_machine) != 0:  # 有多餘job和缺少的job
-                    less_job = np.argmin(counts)  # 出現次數缺少的job
-                    large_job = np.argmax(counts)  # 出現次數多出的job
+                )
+                # 有多餘job和缺少的job (余分なジョブ または 不足しているジョブがある場合)
+                if sum(counts != self.num_machine) != 0:
+                    job_ids = set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+                    missing_ids = set(unique_elements) - job_ids
+                    if len(missing_ids) == 0:
+                        # 出現次數缺少的job (出現回数が少ないジョブ)
+                        less_job = unique_elements[np.argmin(counts)]
+                        # 出現次數多出的job (出現回数が余分なジョブ)
+                        large_job = unique_elements[np.argmax(counts)]
+                    # NOTE: おそらくこの分岐が存在しなかったため、後続処理でエラーが発生していたと思料される
+                    else:
+                        less_job = list(missing_ids)[0]
+                        large_job = unique_elements[np.argmax(counts)]
+
                     offspring_array = np.array(offspring_list[i])
 
-                    # NOTE: ごくたまに、 IndexError: index 0 is out of bounds for axis 0 with size 0 が発生する
-                    offspring_job_large_index = np.where(offspring_array == large_job)[
-                        0
-                    ][0]  # 出現次數多出的job的第一個出現位置
+                    try:
+                        # NOTE: ごくたまに、 IndexError: index 0 is out of bounds for axis 0 with size 0 が発生する
+                        # 出現次數多出的job的第一個出現位置 (最初に出現する余分なジョブの位置)
+                        offspring_job_large_index = np.where(
+                            offspring_array == large_job
+                        )[0][0]
+                    # TODO: error の原因究明のためデバッグ中
+                    except IndexError as error:
+                        print(error)
+                        print("large_job:", large_job, "less_job:", less_job)
+                        print(
+                            "np.where(offspring_array == large_job):",
+                            np.where(offspring_array == large_job),
+                        )
+                        # import pdb; pdb.set_trace()
 
                     # 出現次數的多的job， 使用較少出現的job替代
                     offspring_list[i][offspring_job_large_index] = less_job
+
             counts_sum = 0
             for j in range(
                 self.population_size
