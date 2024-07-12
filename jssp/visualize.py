@@ -4,8 +4,8 @@
 # from plotly.offline import iplot
 
 # import plotly.figure_factory as ff
-import datetime
 
+from eval_score import make_job_record
 from genetic_algorithm import Chromosome
 
 
@@ -17,20 +17,26 @@ def prepare_gannt_data_from(
     j_keys: list[int],  # 0~9
     sequence_best: Chromosome,
 ) -> tuple[dict, dict]:
-    key_count = {key: 0 for key in j_keys}
-    j_count = {key: 0 for key in j_keys}
-    # m_count = {key: 0 for key in m_keys}
+    # カウンター類の初期化
+    done_count_in_job = {key: 0 for key in j_keys}
+    time4job = {key: 0 for key in j_keys}
     time4machine: dict[int, dict[int, int]] = {}
     for machine_type_id in m_keys:
         time4machine[machine_type_id + 1] = {}
         for machine_id in range(0, machine_num_per_type[machine_type_id]):
             time4machine[machine_type_id + 1][machine_id] = 0
+    # free_times: list[dict[str, int]] = [
+    #     # 例
+    #     # {
+    #     #     "start_time": 4, "end_time": 12, "interval": 8,
+    #     #     "machine_type_id": 2, "machine_id": 0
+    #     # }
+    # ]
 
     j_record: dict = {}
-
     for gene in sequence_best:
         # 次に処理すべきタスクのID
-        task_no: int = key_count[gene]
+        task_no: int = done_count_in_job[gene]
 
         # 処理時間
         gen_t: int = int(proc_time[gene][task_no])
@@ -39,34 +45,23 @@ def prepare_gannt_data_from(
         # gen_m: int = int(machine_type_seq[gene][task_no])
         m_type_id: int = int(machine_type_seq[gene][task_no])
         # タスクを担当する機械IDをここで決める (今まで処理時間が最も短い機械)
-        machine_id: int = min(
-            time4machine[m_type_id],
-            key=time4machine[m_type_id].get,
-        )
+        machine_id: int = min(time4machine[m_type_id], key=time4machine[m_type_id].get)
 
-        j_count[gene] = j_count[gene] + gen_t
+        time4job[gene] = time4job[gene] + gen_t
         time4machine[m_type_id][machine_id] = (
             time4machine[m_type_id][machine_id] + gen_t
         )
 
-        if time4machine[m_type_id][machine_id] < j_count[gene]:
-            time4machine[m_type_id][machine_id] = j_count[gene]
-        elif time4machine[m_type_id][machine_id] > j_count[gene]:
-            j_count[gene] = time4machine[m_type_id][machine_id]
+        if time4machine[m_type_id][machine_id] < time4job[gene]:
+            time4machine[m_type_id][machine_id] = time4job[gene]
+        elif time4machine[m_type_id][machine_id] > time4job[gene]:
+            time4job[gene] = time4machine[m_type_id][machine_id]
 
-        # convert seconds to hours, minutes and seconds
-        start_time: str = str(
-            datetime.timedelta(seconds=j_count[gene] - proc_time[gene][task_no])
+        # 記録を残す
+        j_record = j_record | make_job_record(
+            time4job, gene, gen_t, m_type_id, machine_id, j_record
         )
-        end_time: str = str(datetime.timedelta(seconds=j_count[gene]))
-
-        rec_key: tuple = (gene, f"{m_type_id}_{machine_id}")
-
-        if j_record.get(rec_key) is not None:
-            print(rec_key, "is already in j_record, and updated.")
-        j_record[rec_key] = [start_time, end_time]
-
-        key_count[gene] = key_count[gene] + 1
+        done_count_in_job[gene] = done_count_in_job[gene] + 1
 
     return time4machine, j_record
 
