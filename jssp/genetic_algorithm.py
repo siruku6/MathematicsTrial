@@ -1,4 +1,7 @@
+from typing import Optional
+
 import numpy as np
+from eval_score import calc_time4job
 from tqdm import tqdm
 
 # 100 個の int 型要素を持つ配列
@@ -10,19 +13,21 @@ class GA:
         self,
         population_size: int,
         num_job: int,
-        num_machine: int,
+        num_machine_types: int,
         num_gene: int,
         proc_time: list,
         machine_type_seq: list,
         machine_num_per_type: list[int],
+        OperationTypeMapping: Optional[dict[int, str]] = None,
     ) -> None:
         self.population_size = population_size
         self.num_job = num_job
-        self.num_machine = num_machine
+        self.num_machine_types = num_machine_types
         self.num_gene = num_gene
         self.proc_time = proc_time
         self.machine_type_seq = machine_type_seq
         self.machine_num_per_type = machine_num_per_type
+        self.OperationTypeMapping: Optional[dict[int, str]] = OperationTypeMapping
 
         self.results: list[dict] = []
 
@@ -96,7 +101,7 @@ class GA:
                     offspring_list[i], return_counts=True
                 )
                 # 有多餘job和缺少的job (余分なジョブ または 不足しているジョブがある場合)
-                if sum(counts != self.num_machine) != 0:
+                if sum(counts != self.num_machine_types) != 0:
                     job_ids = set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
                     missing_ids = set(unique_elements) - job_ids
                     if len(missing_ids) == 0:
@@ -126,6 +131,7 @@ class GA:
                             np.where(offspring_array == large_job),
                         )
                         # import pdb; pdb.set_trace()
+                        raise error
 
                     # 出現次數的多的job， 使用較少出現的job替代
                     offspring_list[i][offspring_job_large_index] = less_job
@@ -137,7 +143,7 @@ class GA:
                 unique_elements, counts = np.unique(
                     offspring_list[j], return_counts=True
                 )
-                if sum(counts != self.num_machine) != 0:
+                if sum(counts != self.num_machine_types) != 0:
                     counts_sum += 1
             if counts_sum == 0:
                 stop = False
@@ -168,65 +174,9 @@ class GA:
                     count += 1
         return offspring_list
 
-    def _calc_time4job(
-        self, target_chromosome: Chromosome, num_job: int, num_machine: int
-    ) -> dict[int, int]:
-        """
-        対象個体の遺伝子をスケジュールにしたときに、実際にどのくらい時間がかかるかを計算する
-
-        len(target_chromosome) => num_job * num_machine
-        """
-        j_keys: list[int] = [j for j in range(num_job)]
-        m_keys: list[int] = [j for j in range(0, num_machine)]
-
-        # job の key 番目のタスクが処理された回数をカウントする
-        key_count: dict[int, int] = {key: 0 for key in j_keys}
-
-        # 各 job にかかる時間を格納するための辞書
-        time4job: dict[int, int] = {key: 0 for key in j_keys}
-
-        time4machine: dict[int, dict[int, int]] = {}
-        for machine_type_id in m_keys:
-            time4machine[machine_type_id + 1] = {}
-            for machine_id in range(0, self.machine_num_per_type[machine_type_id]):
-                time4machine[machine_type_id + 1][machine_id] = 0
-
-        # 1個体の染色体を一つずつ処理
-        for gene in target_chromosome:
-            # 次に処理すべきタスクのID
-            task_no: int = key_count[gene]
-
-            # 処理時間
-            gen_t: int = int(self.proc_time[gene][task_no])
-            # ジョブ内タスクを担当する機械タイプのID
-            m_type_id: int = int(self.machine_type_seq[gene][task_no])
-
-            # OPTIMIZE: ここでは、余計な待機時間が少なくて済む機械を選びたいが、暫定で単純な処理とした
-            # タスクを担当する機械IDをここで決める (今まで処理時間が最も短い機械)
-            machine_id: int = min(
-                time4machine[m_type_id], key=time4machine[m_type_id].get
-            )
-            # machine_id: int = min(time4machine[m_type_id])
-
-            # gene番目のジョブ内のタスク実行にかかった時間合計
-            time4job[gene] = time4job[gene] + gen_t
-
-            # m_type_id 番目の機械における処理時間合計
-            time4machine[m_type_id][machine_id] = (
-                time4machine[m_type_id][machine_id] + gen_t
-            )
-
-            # ジョブ毎にかかった時間、もしくは機械毎にかかった時間のうち、小さい方を、大きい方の値で上書きする
-            if time4machine[m_type_id][machine_id] < time4job[gene]:
-                time4machine[m_type_id][machine_id] = time4job[gene]
-            elif time4machine[m_type_id][machine_id] > time4job[gene]:
-                time4job[gene] = time4machine[m_type_id][machine_id]
-
-            key_count[gene] = key_count[gene] + 1
-
-        return time4job
-
-    def fitness_caculate(self, total_chromosome: list[Chromosome]) -> tuple:
+    def fitness_caculate(
+        self, total_chromosome: list[Chromosome]
+    ) -> tuple[list[int], list[float], float]:
         """
         適応度の計算を行う
 
@@ -243,16 +193,22 @@ class GA:
         chrom_fitness: list[float]
             各染色体から計算された makespan の逆数の配列 (大きい方が良い)
 
-        total_fitness: int
+        total_fitness: float
             各染色体から計算された makespan の逆数の合計 (大きい方が良い)
         """
         chrom_fitness, chrom_fit = [], []
-        total_fitness: int = 0
+        total_fitness: float = 0.0
         for individual_id in range(
             self.population_size * 2
         ):  # 親と子の2世代分ループするので 2倍
-            time4job: dict[int, int] = self._calc_time4job(
-                total_chromosome[individual_id], self.num_job, self.num_machine
+            time4job: dict[int, int] = calc_time4job(
+                self.machine_num_per_type,
+                self.proc_time,
+                self.machine_type_seq,
+                self.num_job,
+                self.num_machine_types,
+                total_chromosome[individual_id],
+                OperationTypeMapping=self.OperationTypeMapping,
             )
 
             # 在job中需要的最多完工時間的，即為makespan
