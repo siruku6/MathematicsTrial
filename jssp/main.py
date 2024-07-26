@@ -21,21 +21,21 @@ if __name__ == "__main__":
     processing_df = processing_df.drop(["Job"], axis=1)
     sequence_df = sequence_df.drop(["Job"], axis=1)
 
-    num_machine_types = processing_df.shape[0]  # number of machines
+    num_tool_types = processing_df.shape[0]  # number of tools
     num_job = processing_df.shape[1]  # number of jobs
-    num_gene = num_machine_types * num_job  # number of genes in a chromosome
+    num_gene = num_tool_types * num_job  # number of genes in a chromosome
 
     # processing_times
     proc_time = [list(map(int, processing_df.iloc[i])) for i in range(num_job)]
 
     # 機械タイプ
-    # machine_sequences for tasks
-    machine_type_seq: list[list[int]] = [
+    # tool_sequences for tasks
+    tool_type_seq: list[list[int]] = [
         list(map(int, sequence_df.iloc[i])) for i in range(num_job)
     ]
 
     # 機械タイプごとの、機械数
-    machine_num_per_type: list[int] = [3, 4, 2, 1, 2, 1, 1, 3, 3, 2]
+    tool_num_per_type: list[int] = [3, 4, 2, 1, 2, 1, 1, 3, 3, 2]
 
     OperationType1 = {i: "flow" for i in range(0, 5)}
     OperationType2 = {i: "open" for i in range(5, 9)}
@@ -60,11 +60,11 @@ if __name__ == "__main__":
     ga = GA(
         population_size=population_size,
         num_job=num_job,
-        num_machine_types=num_machine_types,
+        num_tool_types=num_tool_types,
         num_gene=num_gene,
         proc_time=proc_time,
-        machine_type_seq=machine_type_seq,
-        machine_num_per_type=machine_num_per_type,
+        tool_type_seq=tool_type_seq,
+        tool_num_per_type=tool_num_per_type,
         OperationTypeMapping=OperationTypeMapping,
     )
 
@@ -87,20 +87,20 @@ if __name__ == "__main__":
     # plt.show()
 
     """----------visualize----------"""
-    m_keys = [j for j in range(num_machine_types)]
+    m_keys = [j for j in range(num_tool_types)]
     j_keys = [j for j in range(num_job)]
 
-    time4machine, j_record = prepare_gannt_data_from(
-        machine_num_per_type,
+    time4tool, j_record = prepare_gannt_data_from(
+        tool_num_per_type,
         proc_time,
-        machine_type_seq,
+        tool_type_seq,
         num_job,
-        num_machine_types,
+        num_tool_types,
         result["sequence_best"],
     )
 
     frame_dicts: list[dict] = format_gannt_data(
-        machine_num_per_type, m_keys, j_keys, j_record
+        tool_num_per_type, m_keys, j_keys, j_record
     )
     fig = ff.create_gantt(
         frame_dicts,
