@@ -1,7 +1,7 @@
 from typing import Optional
 
 import numpy as np
-from eval_score import calc_time4job
+from eval.score import calc_time4job
 from tqdm import tqdm
 
 # 100 個の int 型要素を持つ配列
