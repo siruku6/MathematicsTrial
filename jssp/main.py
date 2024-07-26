@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 import plotly.figure_factory as ff
-from eval_score import prepare_gannt_data_from
+from eval.score import prepare_gannt_data_from
 from genetic_algorithm import GA
 from visualize import format_gannt_data
 

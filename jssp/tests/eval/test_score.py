@@ -1,4 +1,4 @@
-from jssp.eval_score import calc_time4job, prepare_gannt_data_from
+from jssp.eval.score import calc_time4job, prepare_gannt_data_from
 
 
 class TestCalcTime4Job:
