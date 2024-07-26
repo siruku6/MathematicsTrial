@@ -7,7 +7,7 @@
 
 
 def format_gannt_data(
-    machine_num_per_type: list[int],  # 0~9
+    tool_num_per_type: list[int],  # 0~9
     m_keys: list[int],  # 0~9
     j_keys: list[int],  # 0~9
     j_record: dict[tuple, list[str]],
@@ -15,16 +15,16 @@ def format_gannt_data(
     frame_dicts: list[dict] = []
     for m_type_id in m_keys:
         for j in j_keys:
-            for machine_id in range(0, machine_num_per_type[m_type_id]):
-                if j_record.get((j, f"{m_type_id + 1}_{machine_id}")) is None:
+            for tool_id in range(0, tool_num_per_type[m_type_id]):
+                if j_record.get((j, f"{m_type_id + 1}_{tool_id}")) is None:
                     continue
                 frame_dicts.append(
                     dict(
-                        Task=f"Machine {m_type_id}-{machine_id}",
+                        Task=f"Machine {m_type_id}-{tool_id}",
                         Start="2023-10-15 %s"
-                        % (str(j_record[(j, f"{m_type_id + 1}_{machine_id}")][0])),
+                        % (str(j_record[(j, f"{m_type_id + 1}_{tool_id}")][0])),
                         Finish="2023-10-15 %s"
-                        % (str(j_record[(j, f"{m_type_id + 1}_{machine_id}")][1])),
+                        % (str(j_record[(j, f"{m_type_id + 1}_{tool_id}")][1])),
                         Resource="Job %s" % (j + 1),
                     )
                 )

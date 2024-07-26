@@ -3,20 +3,20 @@ from jssp.eval.score import calc_time4job, prepare_gannt_data_from
 
 class TestCalcTime4Job:
     def test_all_flow_jobs(self) -> None:
-        machine_num_per_type = [1, 1, 1]
+        tool_num_per_type = [1, 1, 1]
         proc_time = [[1, 2, 3], [3, 2, 1], [4, 1, 1]]
-        machine_type_seq = [[1, 2, 3], [3, 2, 1], [2, 1, 3]]
+        tool_type_seq = [[1, 2, 3], [3, 2, 1], [2, 1, 3]]
         num_job = 3
-        num_machine_types = 3
+        num_tool_types = 3
         target_chromosome = [0, 0, 0, 1, 1, 1, 2, 2, 2]
         OperationTypeMapping = {0: "flow", 1: "flow", 2: "flow"}
 
         result = calc_time4job(
-            machine_num_per_type,
+            tool_num_per_type,
             proc_time,
-            machine_type_seq,
+            tool_type_seq,
             num_job,
-            num_machine_types,
+            num_tool_types,
             target_chromosome,
             OperationTypeMapping,
         )
@@ -30,20 +30,20 @@ class TestCalcTime4Job:
 
 class TestPrepareGanntDataFrom:
     def test_all_flow_jobs(self) -> None:
-        machine_num_per_type = [1, 1, 1]
+        tool_num_per_type = [1, 1, 1]
         proc_time = [[1, 2, 3], [3, 2, 1], [4, 1, 1]]
-        machine_type_seq = [[1, 2, 3], [3, 2, 1], [2, 1, 3]]
+        tool_type_seq = [[1, 2, 3], [3, 2, 1], [2, 1, 3]]
         num_job = 3
-        num_machine_types = 3
+        num_tool_types = 3
         target_chromosome = [0, 0, 0, 1, 1, 1, 2, 2, 2]
         OperationTypeMapping = {0: "flow", 1: "flow", 2: "flow"}
 
         result, _ = prepare_gannt_data_from(
-            machine_num_per_type,
+            tool_num_per_type,
             proc_time,
-            machine_type_seq,
+            tool_type_seq,
             num_job,
-            num_machine_types,
+            num_tool_types,
             target_chromosome,
             OperationTypeMapping,
         )

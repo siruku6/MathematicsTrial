@@ -13,20 +13,20 @@ class GA:
         self,
         population_size: int,
         num_job: int,
-        num_machine_types: int,
+        num_tool_types: int,
         num_gene: int,
         proc_time: list,
-        machine_type_seq: list,
-        machine_num_per_type: list[int],
+        tool_type_seq: list,
+        tool_num_per_type: list[int],
         OperationTypeMapping: Optional[dict[int, str]] = None,
     ) -> None:
         self.population_size = population_size
         self.num_job = num_job
-        self.num_machine_types = num_machine_types
+        self.num_tool_types = num_tool_types
         self.num_gene = num_gene
         self.proc_time = proc_time
-        self.machine_type_seq = machine_type_seq
-        self.machine_num_per_type = machine_num_per_type
+        self.tool_type_seq = tool_type_seq
+        self.tool_num_per_type = tool_num_per_type
         self.OperationTypeMapping: Optional[dict[int, str]] = OperationTypeMapping
 
         self.results: list[dict] = []
@@ -92,7 +92,7 @@ class GA:
     def repairmet(self, offspring_list: list[Chromosome]) -> list[Chromosome]:
         stop = True
 
-        # 不斷進行修復，直到每個job的出現次數等於machine數
+        # 不斷進行修復，直到每個job的出現次數等於tool數
         # 各ジョブの発生回数がマシンの台数と同じになるまで修復を続ける。
         while stop:
             for i in range(self.population_size):
@@ -101,7 +101,7 @@ class GA:
                     offspring_list[i], return_counts=True
                 )
                 # 有多餘job和缺少的job (余分なジョブ または 不足しているジョブがある場合)
-                if sum(counts != self.num_machine_types) != 0:
+                if sum(counts != self.num_tool_types) != 0:
                     job_ids = set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
                     missing_ids = set(unique_elements) - job_ids
                     if len(missing_ids) == 0:
@@ -143,7 +143,7 @@ class GA:
                 unique_elements, counts = np.unique(
                     offspring_list[j], return_counts=True
                 )
-                if sum(counts != self.num_machine_types) != 0:
+                if sum(counts != self.num_tool_types) != 0:
                     counts_sum += 1
             if counts_sum == 0:
                 stop = False
@@ -202,11 +202,11 @@ class GA:
             self.population_size * 2
         ):  # 親と子の2世代分ループするので 2倍
             time4job: dict[int, int] = calc_time4job(
-                self.machine_num_per_type,
+                self.tool_num_per_type,
                 self.proc_time,
-                self.machine_type_seq,
+                self.tool_type_seq,
                 self.num_job,
-                self.num_machine_types,
+                self.num_tool_types,
                 total_chromosome[individual_id],
                 OperationTypeMapping=self.OperationTypeMapping,
             )
