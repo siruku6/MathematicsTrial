@@ -131,4 +131,5 @@ dmypy.json
 # --------------
 # Custom rules
 # --------------
+.Trash-0/
 notebooks/
