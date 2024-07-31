@@ -20,12 +20,12 @@ def format_gannt_data(
                     continue
                 frame_dicts.append(
                     dict(
-                        Task=f"Machine {m_type_id}-{tool_id}",
+                        Task=f"Machine {m_type_id + 1}-{tool_id}",
                         Start="2023-10-15 %s"
                         % (str(j_record[(j, f"{m_type_id + 1}_{tool_id}")][0])),
                         Finish="2023-10-15 %s"
                         % (str(j_record[(j, f"{m_type_id + 1}_{tool_id}")][1])),
-                        Resource="Job %s" % (j + 1),
+                        Resource="Job %s" % (j),
                     )
                 )
                 # df.append(dict(Task="Machine %s"%(m), Start="2018-07-14 %s"%(str(j_record[(j,m)][0])), Finish="2018-07-14 %s"%(str(j_record[(j,m)][1])),Resource="Job %s"%(j+1)))
