@@ -1,6 +1,7 @@
 from typing import Optional
 
 import numpy as np
+from eval.exec_hist_library import ExecHistLibrary
 from eval.score import calc_time4job
 from tqdm import tqdm
 
@@ -19,6 +20,7 @@ class GA:
         tool_type_seq: list,
         tool_num_per_type: list[int],
         OperationTypeMapping: Optional[dict[int, str]] = None,
+        hist_lib: Optional[ExecHistLibrary] = None,
     ) -> None:
         self.population_size = population_size
         self.num_job = num_job
@@ -28,6 +30,7 @@ class GA:
         self.tool_type_seq = tool_type_seq
         self.tool_num_per_type = tool_num_per_type
         self.OperationTypeMapping: Optional[dict[int, str]] = OperationTypeMapping
+        self.hist_lib: Optional[ExecHistLibrary] = hist_lib
 
         self.results: list[dict] = []
 
@@ -209,6 +212,7 @@ class GA:
                 self.num_tool_types,
                 total_chromosome[individual_id],
                 OperationTypeMapping=self.OperationTypeMapping,
+                hist_lib=self.hist_lib,
             )
 
             # 在job中需要的最多完工時間的，即為makespan
@@ -297,7 +301,7 @@ class GA:
         # generate initial population
         population_list = self.inital_population(population_size=self.population_size)
 
-        for iter in tqdm(range(num_iteration)):
+        for iter in tqdm(range(num_iteration), total=num_iteration):
             # generate offspring by crossover
             parent_list, offspring_list = self.crossover(
                 population_list=population_list, crossover_rate=crossover_rate

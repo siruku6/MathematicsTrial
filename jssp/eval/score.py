@@ -1,6 +1,8 @@
 import datetime
 from typing import Optional, TypedDict, Union
 
+from eval.exec_hist_library import ExecHist, ExecHistLibrary, MarginCandidate
+
 # 100 個の int 型要素を持つ配列
 Chromosome = list[int]
 
@@ -43,6 +45,7 @@ def assign_task_to_free_time(
             tool_id = occupied_free_time["tool_id"]
             # 占められた空き時間を、 free_times から削除
             free_times.remove(occupied_free_time)
+            # print("occupied_free_time:", occupied_free_time)
 
     else:
         available_free_times = []
@@ -64,6 +67,7 @@ def calc_time4job(
     num_tool_types: int,
     target_chromosome: Chromosome,
     OperationTypeMapping: Optional[dict] = None,
+    hist_lib: Optional[ExecHistLibrary] = None,
 ) -> dict[int, int]:
     """
     対象個体の遺伝子をスケジュールにしたときに、実際にどのくらい時間がかかるかを計算する
@@ -86,8 +90,6 @@ def calc_time4job(
         for _tool_id in range(0, tool_num_per_type[tool_type_id]):
             time4tool[tool_type_id + 1][_tool_id] = 0
 
-    # いずれかの機械が空いている時間を格納しておく辞書
-    free_times: list[FreeTime] = []
     # 1個体の染色体を一つずつ処理
     for gene in target_chromosome:
         # 次に処理すべきタスクのID
@@ -99,17 +101,32 @@ def calc_time4job(
         m_type_id: int = int(tool_type_seq[gene][task_no])
 
         # 遊休時間がある機械にタスクを割り当てることを試みる
-        assign_result: dict = assign_task_to_free_time(
-            gene,
-            free_times=free_times,
-            m_type_id=m_type_id,
-            gen_t=gen_t,
-            OperationTypeMapping=OperationTypeMapping,
-        )
+        available_margin: Optional[MarginCandidate] = None
+        if (
+            (hist_lib is not None)
+            and (OperationTypeMapping is not None)
+            and (OperationTypeMapping[gene] == "open")
+        ):
+            available_margin = hist_lib.search_available_margin_time(
+                tool_type_id=f"tool_{m_type_id}",
+                operation_type_id=gene,
+                job_make_span=gen_t,
+            )
 
-        if assign_result["success"]:
-            free_times = assign_result["remained_free_times"]
-            tool_id = assign_result["tool_id"]
+        if available_margin is not None:
+            start_time: int = available_margin["start_time"]
+            hist_lib.insert(
+                available_margin["tool_id"],
+                index=available_margin["index"],
+                target_hist={
+                    "tool_type_id": f"tool_{m_type_id}",
+                    "operation_type_id": gene,
+                    "task_no": task_no,
+                    "start_time": start_time,
+                    "end_time": start_time + gen_t,
+                },
+            )
+
         # タスクを担当する機械ID決める (今まで処理時間が最も短い機械)
         else:
             # OPTIMIZE: ここでは、余計な待機時間が少なくて済む機械を選びたいが、暫定で単純な処理とした
@@ -123,21 +140,25 @@ def calc_time4job(
 
             # ジョブ毎にかかった時間、もしくは機械毎にかかった時間のうち、小さい方を、大きい方の値で上書きする
             if time4tool[m_type_id][tool_id] < time4job[gene]:
-                # 空き時間を記録しておく
-                free_times.append(
-                    {
-                        "start_time": time4tool[m_type_id][tool_id],
-                        "end_time": time4job[gene],
-                        "interval": time4job[gene] - time4tool[m_type_id][tool_id],
-                        "tool_type_id": m_type_id,
-                        "tool_id": tool_id,
-                    }
-                )
                 time4tool[m_type_id][tool_id] = time4job[gene]
             elif time4tool[m_type_id][tool_id] > time4job[gene]:
                 time4job[gene] = time4tool[m_type_id][tool_id]
 
+            if hist_lib is not None:
+                # ジョブの実行履歴を記録
+                hist: ExecHist = {
+                    "tool_type_id": f"tool_{m_type_id}",
+                    "operation_type_id": gene,
+                    "task_no": task_no,
+                    "start_time": time4tool[m_type_id][tool_id] - gen_t,
+                    "end_time": time4tool[m_type_id][tool_id],
+                }
+                hist_lib.add(tool_id=f"tool_{m_type_id}_{tool_id}", hist_dict=hist)
+
         done_count_in_job[gene] = done_count_in_job[gene] + 1
+
+    if hist_lib is not None:
+        hist_lib.clear()
 
     return time4job
 
@@ -170,7 +191,13 @@ def prepare_gannt_data_from(
     num_tool_types: int,
     sequence_best: Chromosome,
     OperationTypeMapping: Optional[dict] = None,
-) -> tuple[dict, dict]:
+    hist_lib: Optional[ExecHistLibrary] = None,
+    clear: bool = True,
+) -> tuple[dict, dict, ExecHistLibrary]:
+    """
+    対象個体の遺伝子をスケジュールにしたときに、実際にどのくらい時間がかかるかを計算し、
+    ガントチャートのデータを作成する
+    """
     # カウンター類の初期化
     j_keys: list[int] = [j for j in range(num_job)]
     m_keys: list[int] = [j for j in range(0, num_tool_types)]
@@ -182,7 +209,7 @@ def prepare_gannt_data_from(
         time4tool[tool_type_id + 1] = {}
         for _tool_id in range(0, tool_num_per_type[tool_type_id]):
             time4tool[tool_type_id + 1][_tool_id] = 0
-    free_times: list[FreeTime] = []
+    # free_times: list[FreeTime] = []
 
     j_record: dict = {}
     for gene in sequence_best:
@@ -196,17 +223,34 @@ def prepare_gannt_data_from(
         m_type_id: int = int(tool_type_seq[gene][task_no])
 
         # 遊休時間がある機械にタスクを割り当てることを試みる
-        assign_result: dict = assign_task_to_free_time(
-            gene,
-            free_times=free_times,
-            m_type_id=m_type_id,
-            gen_t=gen_t,
-            OperationTypeMapping=OperationTypeMapping,
-        )
-        if assign_result["success"]:
-            free_times = assign_result["remained_free_times"]
-            tool_id: int = assign_result["tool_id"]
-            end_time_sec: int = assign_result["occupied_free_time"]["end_time"]
+        available_margin: Optional[MarginCandidate] = None
+        if (
+            (hist_lib is not None)
+            and (OperationTypeMapping is not None)
+            and (OperationTypeMapping[gene] == "open")
+        ):
+            available_margin = hist_lib.search_available_margin_time(
+                tool_type_id=f"tool_{m_type_id}",
+                operation_type_id=gene,
+                job_make_span=gen_t,
+            )
+
+        if available_margin is not None:
+            start_time: int = available_margin["start_time"]
+            hist_lib.insert(
+                available_margin["tool_id"],
+                index=available_margin["index"],
+                target_hist={
+                    "tool_type_id": f"tool_{m_type_id}",
+                    "operation_type_id": gene,
+                    "task_no": task_no,
+                    "start_time": start_time,
+                    "end_time": start_time + gen_t,
+                },
+            )
+            tool_id: int = available_margin["tool_id"].split("_")[-1]
+            end_time_sec: int = start_time + gen_t
+
         else:
             # タスクを担当する機械IDをここで決める (今まで処理時間が最も短い機械)
             tool_id = min(time4tool[m_type_id], key=time4tool[m_type_id].get)
@@ -215,20 +259,21 @@ def prepare_gannt_data_from(
             time4tool[m_type_id][tool_id] = time4tool[m_type_id][tool_id] + gen_t
 
             if time4tool[m_type_id][tool_id] < time4job[gene]:
-                # 空き時間を記録しておく
-                free_times.append(
-                    {
-                        "start_time": time4tool[m_type_id][tool_id],
-                        "end_time": time4job[gene],
-                        "interval": time4job[gene] - time4tool[m_type_id][tool_id],
-                        "tool_type_id": m_type_id,
-                        "tool_id": tool_id,
-                    }
-                )
                 time4tool[m_type_id][tool_id] = time4job[gene]
             elif time4tool[m_type_id][tool_id] > time4job[gene]:
                 time4job[gene] = time4tool[m_type_id][tool_id]
             end_time_sec = time4job[gene]
+
+            if hist_lib is not None:
+                # ジョブの実行履歴を記録
+                hist: ExecHist = {
+                    "tool_type_id": f"tool_{m_type_id}",
+                    "operation_type_id": gene,
+                    "task_no": task_no,
+                    "start_time": time4tool[m_type_id][tool_id] - gen_t,
+                    "end_time": time4tool[m_type_id][tool_id],
+                }
+                hist_lib.add(tool_id=f"tool_{m_type_id}_{tool_id}", hist_dict=hist)
 
         # 記録を残す
         j_record = j_record | make_job_record(
@@ -236,4 +281,7 @@ def prepare_gannt_data_from(
         )
         done_count_in_job[gene] = done_count_in_job[gene] + 1
 
-    return time4job, j_record
+    if (hist_lib is not None) and clear:
+        hist_lib.clear()
+
+    return time4job, j_record, hist_lib
