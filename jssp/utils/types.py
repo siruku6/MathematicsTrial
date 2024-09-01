@@ -1,0 +1,1 @@
+Chromosome = list[int]
