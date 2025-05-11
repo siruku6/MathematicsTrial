@@ -33,6 +33,10 @@ jobs:
         shell: bash
         run: pip install -r docker/dev/requirements.txt
 
+      - name: Detect current_dir
+        shell: bash
+        run: pwd
+
       - name: pytest
         run: pytest --tb=line ./jssp/tests/
         env:
