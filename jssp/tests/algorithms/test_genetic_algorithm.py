@@ -1,5 +1,5 @@
 import numpy as np
-from jssp.algorithms.genetic_algorithm import crossover_by_order
+from algorithms.genetic_algorithm import crossover_by_order
 
 
 class TestCrossoverByOrder:
