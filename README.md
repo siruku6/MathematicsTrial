@@ -6,7 +6,8 @@ upload the trials concerning mathematics
 
 ## [ジョブショップスケジューリング問題 (JSSP) の最適化](/docs/JSSP.md)
 
-- 以下の手法を用いて、 JSSP に対する求解性能を比較した
+- 以下の手法を用いて、 [JSSP に対する求解性能を比較](https://github.com/siruku6/MathematicsTrial/tree/master/notebooks/benchmarks)した
     - 遺伝的アルゴリズム (Genetic Algorithm: GA)
     - 数理最適化ソルバー (CBC、CP-SAT)
     - 焼きなまし法 (Simulated Annealing: SA)
+    - 離散粒子群最適化 (Discrete Particle Swarm Optimization: DPSO)
