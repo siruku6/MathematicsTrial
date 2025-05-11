@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
-from jssp.eval.exec_hist_library import ExecHistLibrary, ToolTypeInfo
-from jssp.eval.score import calc_time4job, prepare_gannt_data_from
+from eval.exec_hist_library import ExecHistLibrary, ToolTypeInfo
+from eval.score import calc_time4job, prepare_gannt_data_from
 
 
 @pytest.fixture(name="small_proc_time")
